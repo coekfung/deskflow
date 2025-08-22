@@ -129,6 +129,7 @@ std::uint32_t EiKeyState::convertModMask(std::uint32_t xkbMask) const
     static const auto XKB_VMOD_NAME_NUM = "NumLock";
     static const auto XKB_VMOD_NAME_SCROLL = "ScrollLock";
     static const auto XKB_VMOD_NAME_SUPER = "Super";
+    static const auto XKB_VMOD_NAME_HYPER = "Hyper";
     static const auto XKB_MOD_NAME_MOD2 = "Mod2";
     static const auto XKB_MOD_NAME_MOD3 = "Mod3";
     static const auto XKB_MOD_NAME_MOD5 = "Mod5";
@@ -143,7 +144,7 @@ std::uint32_t EiKeyState::convertModMask(std::uint32_t xkbMask) const
       modMask |= (1 << kKeyModifierBitControl);
     else if (name == XKB_MOD_NAME_ALT || name == XKB_VMOD_NAME_ALT)
       modMask |= (1 << kKeyModifierBitAlt);
-    else if (name == XKB_MOD_NAME_LOGO || name == XKB_VMOD_NAME_SUPER)
+    else if (name == XKB_MOD_NAME_LOGO || name == XKB_VMOD_NAME_SUPER || name == XKB_VMOD_NAME_HYPER)
       modMask |= (1 << kKeyModifierBitSuper);
     else if (name == XKB_MOD_NAME_MOD5 || name == XKB_VMOD_NAME_LEVEL3)
       modMask |= (1 << kKeyModifierBitAltGr);
