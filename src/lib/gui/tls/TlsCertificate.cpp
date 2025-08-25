@@ -37,6 +37,8 @@ bool TlsCertificate::generateCertificate(const QString &path, int keyLength) con
     return false;
   }
 
+  qInfo() << "TLS PATH " << path.toStdString();
+
   try {
     deskflow::generatePemSelfSignedCert(path.toStdString(), keyLength);
   } catch (const std::exception &e) {
