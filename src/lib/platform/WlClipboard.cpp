@@ -22,14 +22,15 @@
 
 namespace {
 
-inline static const auto s_copyApp = QStringLiteral("wl-copy");
-inline static const auto s_pasteApp = QStringLiteral("wl-paste");
+inline static const auto s_clipApp = QStringLiteral("xclip");
 
-// wl-clipboard args
-inline static const auto s_listTypes = QStringLiteral("--list-types");
-inline static const auto s_isPrimary = QStringLiteral("--primary");
-inline static const auto s_noNewLine = QStringLiteral("-n");
-inline static const auto s_readType = QStringLiteral("-t%1");
+// xclip args
+inline static const auto s_copy = QStringLiteral("-in");
+inline static const auto s_paste = QStringLiteral("-out");
+inline static const auto s_setSelection = QStringLiteral("-selection");
+inline static const auto s_setType = QStringLiteral("-target");
+inline static const auto s_selectionClipboard = QStringLiteral("clipboard");
+inline static const auto s_selectionPrimary = QStringLiteral("primary");
 
 // MIME types for different clipboard formats
 inline static const auto s_mimeTypeText = QStringLiteral("text/plain;charset=utf-8");
@@ -71,7 +72,7 @@ ClipboardID WlClipboard::getID() const
 
 bool WlClipboard::isAvailable()
 {
-  return !QStandardPaths::findExecutable(s_copyApp).isEmpty() && !QStandardPaths::findExecutable(s_pasteApp).isEmpty();
+  return !QStandardPaths::findExecutable(s_clipApp).isEmpty();
 }
 
 bool WlClipboard::isEnabled()
@@ -115,17 +116,23 @@ bool WlClipboard::empty()
     return false;
   }
   auto cmd = new QProcess(this);
-  cmd->setProgram(s_copyApp);
+  cmd->setProgram(s_clipApp);
   m_runningWlCopies.append(cmd);
   connect(cmd, &QProcess::finished, this, [&] { m_runningWlCopies.removeAll(cmd); });
 
-  QStringList args = {s_noNewLine, ""};
-  if (!m_useClipboard)
-    args.prepend(s_isPrimary);
+  QStringList args = {s_copy};
+  if (m_useClipboard) {
+    args << s_setSelection << s_selectionClipboard;
+  } else {
+    args << s_setSelection << s_selectionPrimary;
+  }
 
   cmd->setArguments(args);
   cmd->start();
-  bool success = cmd->waitForStarted(100);
+  cmd->write("", 0);
+  cmd->closeWriteChannel();
+
+  bool success = cmd->waitForFinished(100);
 
   if (success) {
     // Update ownership and cache only if command succeeded
@@ -154,19 +161,24 @@ void WlClipboard::add(Format format, const std::string &data)
   }
 
   auto cmd = new QProcess(this);
-  cmd->setProgram(s_copyApp);
+  cmd->setProgram(s_clipApp);
 
   m_runningWlCopies.append(cmd);
   connect(cmd, &QProcess::finished, this, [&] { m_runningWlCopies.removeAll(cmd); });
 
-  QStringList args = {s_noNewLine, s_readType.arg(mimeType), QString::fromStdString(data)};
-  if (!m_useClipboard)
-    args.prepend(s_isPrimary);
+  QStringList args = {s_copy, s_setType, mimeType};
+  if (m_useClipboard) {
+    args << s_setSelection << s_selectionClipboard;
+  } else {
+    args << s_setSelection << s_selectionPrimary;
+  }
 
   cmd->setArguments(args);
   cmd->start();
+  cmd->write(data.data(), static_cast<qint64>(data.size()));
+  cmd->closeWriteChannel();
 
-  if (cmd->waitForStarted(100)) {
+  if (cmd->waitForFinished(100)) {
     std::scoped_lock<std::mutex> lock(m_cacheMutex);
     updateOwnership(true);
     invalidateCache();
@@ -268,11 +280,14 @@ std::string WlClipboard::get(Format format) const
   }
 
   QProcess cmd;
-  cmd.setProgram(s_pasteApp);
+  cmd.setProgram(s_clipApp);
 
-  QStringList args = {s_noNewLine, s_readType.arg(mimeType)};
-  if (!m_useClipboard)
-    args.append(s_isPrimary);
+  QStringList args = {s_paste, s_setType, mimeType};
+  if (m_useClipboard) {
+    args << s_setSelection << s_selectionClipboard;
+  } else {
+    args << s_setSelection << s_selectionPrimary;
+  }
 
   cmd.setArguments(args);
   cmd.start();
@@ -323,11 +338,14 @@ IClipboard::Format WlClipboard::mimeTypeToFormat(const QString &mimeType) const
 QStringList WlClipboard::getAvailableMimeTypes() const
 {
   QProcess cmd;
-  cmd.setProgram(s_pasteApp);
+  cmd.setProgram(s_clipApp);
 
-  QStringList args = {s_listTypes};
-  if (!m_useClipboard)
-    args.append(s_isPrimary);
+  QStringList args = {s_paste, s_setType, QStringLiteral("TARGETS")};
+  if (m_useClipboard) {
+    args << s_setSelection << s_selectionClipboard;
+  } else {
+    args << s_setSelection << s_selectionPrimary;
+  }
 
   cmd.setArguments(args);
   cmd.start();

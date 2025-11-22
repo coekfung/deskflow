@@ -420,7 +420,7 @@ void EiScreen::checkClipboards()
   if (m_clipboard->hasChanged()) {
     // Send clipboard change events for all clipboard types
     for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
-      sendClipboardEvent(EventTypes::ClipboardChanged, id);
+      sendClipboardEvent(EventTypes::ClipboardGrabbed, id);
     }
     m_clipboard->resetChanged();
   }
