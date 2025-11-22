@@ -129,7 +129,6 @@ bool WlClipboard::empty()
 
   cmd->setArguments(args);
   cmd->start();
-  cmd->write("", 0);
   cmd->closeWriteChannel();
 
   bool success = cmd->waitForFinished(100);
